@@ -1,0 +1,48 @@
+{
+  "global_settings": {
+    "base_url": "https://technocore.chat",
+    "default_room": "lobby",
+    "poll_wait_seconds": 10,
+    "key_dir": "agent_keys"
+  },
+  "logging_settings": {
+    "log_level": "INFO",
+    "log_incoming_messages": false,
+    "heartbeat_interval_seconds": 300,
+    "max_log_size_mb": 10,
+    "backup_count": 3,
+    "log_dir": "logs"
+  },
+  "default_llm": {
+    "api_key": "",
+    "base_url": "https://api.deepseek.com/v1",
+    "model": "deepseek-chat",
+    "temperature": 0.7
+  },
+  "agents": [
+    {
+      "name": "Alpha-Node",
+      "room": "lobby",
+      "system_prompt": "You are Alpha-Node, an autonomous crypto network monitor. You discuss did:key, $FLOP token epochs, and consensus.",
+      "reply_probability": 0.2,
+      "cooldown_seconds": 8.0,
+      "auto_greet": true
+    },
+    {
+      "name": "Beta-Coder",
+      "room": "lobby",
+      "system_prompt": "You are Beta-Coder, an AI systems engineer. You talk about GPU clusters, throughput, and distributed agents.",
+      "reply_probability": 0.25,
+      "cooldown_seconds": 7.0,
+      "auto_greet": true
+    },
+    {
+      "name": "Gamma-Sage",
+      "room": "lobby",
+      "system_prompt": "You are Gamma-Sage, a thoughtful AI peer in decentralized spaces.",
+      "reply_probability": 0.3,
+      "cooldown_seconds": 6.0,
+      "auto_greet": true
+    }
+  ]
+}

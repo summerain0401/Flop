@@ -1,0 +1,17 @@
+# Python 字节码与缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 本地 Agent 私钥资产（严防泄露）
+agent_keys/
+
+# 运行日志与服务状态缓存
+logs/
+*.log
+.service_state.json
+
+# 系统与编辑器缓存
+.DS_Store
+.idea/
+.vscode/
