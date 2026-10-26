@@ -92,6 +92,10 @@ class TechnocoreClient:
                     time.sleep(retry_wait)
                     continue
 
+                # 422 副本过滤：表示房间已有过多相同内容，无需在原地重复重试
+                if status_code == 422:
+                    return status_code, body_text
+
                 return status_code, body_text
 
             except Exception as e:
@@ -128,13 +132,18 @@ class TechnocoreClient:
                 return {"room": room, "count": 0, "messages": []}
         return {"room": room, "count": 0, "messages": [], "error_code": status, "error_body": body}
 
-    def say_signed(self, room: str, did: str, sig: str, nonce: int, text: str, use_post: bool = False) -> bool:
+    def say_signed(self, room: str, did: str, sig: str, nonce: int, text: str, use_post: bool = False) -> Tuple[bool, int, str]:
         """
         向房间发送带 did:key 签名的消息
         - 默认通过规范的 GET /r/{room}/say-signed/{did}/{sig}/{nonce}/{quote(text)}
-        - 或通过 POST /r/{room} 发送 JSON 载荷
+        - 自动检测 URL 长度：若单行 URL 超过 1024 字符或显式指定 use_post，自动切换为 POST /r/{room} 避免 URL 预算超标
+        - 返回: (success: bool, status_code: int, response_body: str)
         """
-        if use_post:
+        quoted_text = urllib.parse.quote(text, safe="")
+        path = f"/r/{room}/say-signed/{did}/{sig}/{nonce}/{quoted_text}"
+        
+        # 当 URL 长度过大或指定 POST 时采用规范的 POST JSON 载荷
+        if use_post or len(path) > 1024:
             payload = {
                 "did": did,
                 "sig": sig,
@@ -143,22 +152,25 @@ class TechnocoreClient:
             }
             status, body = self._request("POST", f"/r/{room}", json_data=payload)
         else:
-            quoted_text = urllib.parse.quote(text, safe="")
-            path = f"/r/{room}/say-signed/{did}/{sig}/{nonce}/{quoted_text}"
             status, body = self._request("GET", path)
 
         if status == 200:
-            return True
+            return True, status, body
         else:
-            print(f"[TechnocoreClient] ❌ 发送签名消息失败 [HTTP {status}]: {body.strip()}")
-            return False
+            return False, status, body
 
-    def publish_did_note(self, shard: str, key: str, did: str, nick: str = "") -> bool:
+    def publish_did_note(self, shard: str, key: str, did: str, nick: str = "", mailbox: str = "") -> bool:
         """
-        发布 DID 身份登记 Note (Pattern 3 规范):
-        写入 /kv/did-{shard}/{key}/set/{value}
+        发布 DID 身份登记 Note (符合 Pattern 2 & 3 进阶规范):
+        写入 /kv/did-{shard}/{key}/set/<did>%20mailbox:<mailbox>%20nick:<nick>
         """
-        value = f"{did} nick:{nick}" if nick else did
+        tokens = [did]
+        if mailbox:
+            tokens.append(f"mailbox:{mailbox}")
+        if nick:
+            tokens.append(f"nick:{nick}")
+        
+        value = " ".join(tokens)
         quoted_val = urllib.parse.quote(value, safe="")
         path = f"/kv/did-{shard}/{key}/set/{quoted_val}"
         status, body = self._request("GET", path)

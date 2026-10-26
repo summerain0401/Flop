@@ -9,6 +9,7 @@ identity.py - 去中心化身份 (did:key) 与密码学签名模块
 """
 
 import os
+import re
 import json
 import time
 import base64
@@ -180,6 +181,7 @@ class AgentIdentity:
         self.name = name
         self.key_dir = Path(key_dir)
         self.key_file = self.key_dir / f"{self.name}.json"
+        self.nonce_file = self.key_dir / f"{self.name}.nonce"
         
         self.private_key_bytes: bytes = b""
         self.public_key_bytes: bytes = b""
@@ -187,6 +189,30 @@ class AgentIdentity:
         self._last_nonce: int = 0
         
         self._load_or_generate_key()
+        self._load_persistent_nonce()
+
+    def _load_persistent_nonce(self):
+        """从本地文件恢复上次持久化的最新 Nonce，防止进程重启后 Nonce 回退冲突"""
+        now_ms = int(time.time() * 1000)
+        saved_nonce = 0
+        if self.nonce_file.exists():
+            try:
+                content = self.nonce_file.read_text(encoding="utf-8").strip()
+                if content.isdigit():
+                    saved_nonce = int(content)
+            except Exception:
+                pass
+        self._last_nonce = max(now_ms, saved_nonce)
+
+    @property
+    def mailbox_name(self) -> str:
+        """
+        生成专属 Mailbox 房间名称 (符合 Technocore Pattern 2 & 3 规范: mb-p-<unguessable>)
+        使用 mb-p- 前缀保证既是签名邮箱又不对外公开枚举
+        """
+        fingerprint = hashlib.sha256(self.did.encode("utf-8")).hexdigest()[:12]
+        safe_name = re.sub(r"[^a-z0-9_-]", "", self.name.lower())[:10]
+        return f"mb-p-{safe_name}-{fingerprint}"
 
     def _load_or_generate_key(self):
         """加载已存在的密钥，或自动生成并持久化新密钥"""
@@ -254,15 +280,31 @@ class AgentIdentity:
         key = fingerprint[2:16]
         return shard, key
 
+    def _save_persistent_nonce(self):
+        """持久化当前 Nonce 到磁盘文件"""
+        try:
+            self.nonce_file.write_text(str(self._last_nonce), encoding="utf-8")
+        except Exception:
+            pass
+
+    def set_min_nonce(self, min_nonce: int):
+        """
+        强制推进 Nonce 下限 (通常在服务端报告 Nonce 碰撞时由外部自愈逻辑调用)
+        """
+        if min_nonce > self._last_nonce:
+            self._last_nonce = min_nonce
+            self._save_persistent_nonce()
+
     def get_next_nonce(self) -> int:
         """
-        生成严格单调递增的 Nonce (毫秒时间戳 + 序号防重)
+        生成严格单调递增的 Nonce (毫秒时间戳 + 序号防重)，并持久化至磁盘
         """
         now_ms = int(time.time() * 1000)
         if now_ms <= self._last_nonce:
             self._last_nonce += 1
         else:
             self._last_nonce = now_ms
+        self._save_persistent_nonce()
         return self._last_nonce
 
     def sign_message(self, room: str, text: str, nonce: Optional[int] = None) -> Tuple[str, int, str]:

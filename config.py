@@ -13,7 +13,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "base_url": "https://technocore.chat",
         "default_room": "lobby",
         "poll_wait_seconds": 10,
-        "key_dir": "agent_keys"
+        "key_dir": "agent_keys",
+        "claim_faucet": True,
+        "enable_mailbox": True
     },
     "logging_settings": {
         "log_level": "INFO",

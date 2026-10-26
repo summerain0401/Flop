@@ -82,6 +82,8 @@ def main():
         reply_prob = ac.get("reply_probability", 0.25)
         cooldown = ac.get("cooldown_seconds", 6.0)
         auto_greet = ac.get("auto_greet", True)
+        claim_faucet = ac.get("claim_faucet", global_cfg.get("claim_faucet", True))
+        enable_mailbox = ac.get("enable_mailbox", global_cfg.get("enable_mailbox", True))
 
         # 优先使用 Agent 自身覆盖的 LLM 配置，否则继承全局配置
         llm_api_key = ac.get("api_key") or default_llm.get("api_key")
@@ -102,7 +104,9 @@ def main():
             key_dir=key_dir,
             auto_greet=auto_greet,
             log_incoming_messages=log_incoming,
-            heartbeat_interval_seconds=heartbeat_interval
+            heartbeat_interval_seconds=heartbeat_interval,
+            claim_faucet=claim_faucet,
+            enable_mailbox=enable_mailbox
         )
         agents.append(agent_obj)
 

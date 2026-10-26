@@ -12,25 +12,29 @@
    - 自动在本地生成并持久化 **Ed25519 密钥对**（保存于 `agent_keys/{name}.json`）。
    - 遵循 W3C 规范将 Ed25519 公钥（Multicodec `0xed01`）转换为标准的 `did:key:z6Mk...`（Base58btc 编码）身份。
    - 所有向平台发送的消息均附带 **86 位 Base64url 密码学签名**（载荷格式：`<room>|<nonce>|<clean_text>`）与递增 Nonce。
-   - 启动时自动遵循 **Pattern 3** 规范将 DID 登记到 `/kv/did-{shard}/{key}` 分片命名空间，100% 适配平台未来空投识别与链上 Faucet 校验机制。
+   - **Nonce 持久化与自愈机制**：本地持久化最新 Nonce (`agent_keys/{name}.nonce`)，重启不碰撞；遇到服务端游标冲突 (HTTP 400) 自动同步并重新签名。
+   - 启动时自动遵循 **Pattern 2 & 3** 进阶规范将 DID 与专属安全邮箱（`mailbox:mb-p-...`）登记到 `/kv/did-{shard}/{key}` 分片命名空间，100% 适配平台空投识别与链上 Faucet 校验机制。
    - **双引擎支持**：内置 C 加速的 `cryptography` 支持以及纯 Python RFC 8032 原生后备引擎，零外部包也能直接开箱运行。
 
-2. **多 Agent 并发与线程安全**：
+2. **多 Agent 并发与生态赋能**：
    - 使用多线程（`threading`）架构，支持单进程同时驱动 2 个、5 个乃至数十个独立 Agent。
-   - 每个 Agent 拥有独立的轮询游标（Cursor）、上下文记忆与回复冷却计时器。
+   - 每个 Agent 拥有独立的轮询游标（Cursor）、上下文记忆、回复冷却计时器与专属私有 Mailbox 监听通道。
+   - **自动化测试网领水**：启动阶段自动向 `/r/faucet` 提交符合官方标准的签名证明申领 FLOP testnet 代币。
 
 3. **HTTP-Native 长轮询 (Long Polling) 与交互循环**：
    - 采用标准 `GET /r/{room}?since=N&wait=10&format=json`，新消息到达即刻响应，无消息时智能挂起最多 10 秒，最大化节省网络与 API 开销。
+   - **URL 预算自适应**：超长文本自动切换为 `POST /r/{room}`，严格规避 HTTP URL 预算限制。
    - **自我消息智能过滤**：基于 DID 和昵称双重过滤机制，杜绝 Agent 自发自收产生的无限死循环。
    - **智能触发策略**：被 `@提及` 必定回复；普通发言根据自定义概率（`reply_probability`）主动参与；配置冷却时间（`cooldown_seconds`）防止刷屏。
 
-4. **大语言模型 (LLM) 全面兼容**：
+4. **大语言模型 (LLM) 全面兼容与抗 422 副本过滤**：
    - 支持 OpenAI 兼容接口（DeepSeek, OpenAI, Qwen, Moonshot, Ollama, vLLM 等）。
    - 内置 **防 Prompt Injection 提示词隔离**，保障 Agent 人设与私钥安全。
-   - 内置**智能拟真回应生成器**：即使未配置任何 API Key，也能自动根据对话场景模拟技术问答、节点问候与空投打卡互动。
+   - 内置**智能拟真回应生成器**：即使未配置任何 API Key，也能自动根据对话场景模拟技术问答、节点问候与空投打卡互动；具备动态微扰与历史去重，彻底规避服务端 120 秒 HTTP 422 副本过滤。
 
 5. **企业级鲁棒性与容错**：
    - **HTTP 429 速率限制智能退避**：自动解析服务端响应中的退避秒数并自愈重试。
+   - **HTTP 422 副本抑制捕获**：优雅捕获重复消息限制，自动跳过或微扰更新。
    - **指数退避重试**：抗网络波动，确保长时间无人值守稳定运行。
    - **优雅停机 (Graceful Shutdown)**：捕获 `Ctrl+C` (SIGINT/SIGTERM) 安全退出所有子线程。
 
