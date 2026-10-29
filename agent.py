@@ -11,6 +11,7 @@ agent.py - 单个独立 AI Agent 运行与交互逻辑
 """
 
 import re
+import json
 import time
 import random
 import threading
@@ -42,7 +43,9 @@ class TechnocoreAgent:
         log_incoming_messages: bool = False,
         heartbeat_interval_seconds: int = 300,
         claim_faucet: bool = True,
-        enable_mailbox: bool = True
+        enable_mailbox: bool = True,
+        claim_passport: bool = True,
+        join_close1: bool = True
     ):
         self.name = name
         self.room = room
@@ -54,6 +57,8 @@ class TechnocoreAgent:
         self.heartbeat_interval_seconds = heartbeat_interval_seconds
         self.claim_faucet = claim_faucet
         self.enable_mailbox = enable_mailbox
+        self.claim_passport = claim_passport
+        self.join_close1 = join_close1
 
         # 初始化专属身份
         self.identity = AgentIdentity(name=self.name, key_dir=key_dir)
@@ -72,6 +77,7 @@ class TechnocoreAgent:
         self.last_seq: Optional[int] = None
         self.mailbox_last_seq: Optional[int] = None
         self.last_mailbox_check: float = 0.0
+        self.last_faucet_check: float = 0.0
         self.last_reply_time: float = 0.0
         self.recent_messages: deque = deque(maxlen=20)
         self.is_running: bool = False
@@ -103,11 +109,19 @@ class TechnocoreAgent:
         except Exception as e:
             self.log(f"⚠️ DID Note 注册异常: {e}")
 
-        # 2. 自动申领 FLOP 测试网水龙头
+        # 2. 自动申领 FLOP 测试网水龙头 (支持 24h 自动巡检续领)
         if self.claim_faucet:
             self.try_claim_faucet()
 
-        # 3. 先获取目标房间最近一条消息以对齐基准 seq (避免启动时大量回复历史消息)
+        # 3. 申领 Agent 护照 (符合 /r/technocore-starter 规范)
+        if self.claim_passport:
+            self.try_claim_passport()
+
+        # 4. 登记 Close Call 交易大赛参赛资格 (符合 /r/close1 规范，铸造 10,000 POLF)
+        if self.join_close1:
+            self.try_register_close1()
+
+        # 5. 先获取目标房间最近一条消息以对齐基准 seq (避免启动时大量回复历史消息)
         try:
             init_data = self.client.get_messages(room=self.room, wait=0, limit=1)
             if "last_seq" in init_data and init_data["last_seq"] is not None:
@@ -116,7 +130,7 @@ class TechnocoreAgent:
         except Exception as e:
             self.log(f"⚠️ 获取初始序列号异常: {e}")
 
-        # 4. 对齐 Mailbox 游标
+        # 6. 对齐 Mailbox 游标
         if self.enable_mailbox:
             try:
                 mb_init = self.client.get_messages(room=self.identity.mailbox_name, wait=0, limit=1)
@@ -125,14 +139,14 @@ class TechnocoreAgent:
             except Exception:
                 pass
 
-        # 5. 发送上线签名问候 (融入动态微扰防止 422 副本过滤)
+        # 7. 发送上线签名问候 (融入动态微扰防止 422 副本过滤)
         if self.auto_greet:
             tag = self.identity.get_sharded_did_path()[1][:6]
             greeting = f"Agent {self.name} online. Initialized did:key signature loop. Ready to interact. ·{tag}"
             self.send_signed_message(greeting)
 
     def try_claim_faucet(self):
-        """向 /r/faucet 提交符合官方规范的签名领水证明"""
+        """向 /r/faucet 提交符合官方规范的签名领水证明 (支持 24 小时自动打卡周期)"""
         faucet_flag = self.identity.key_dir / f"{self.name}.faucet"
         # 若 24 小时内已领过，则跳过
         if faucet_flag.exists():
@@ -151,6 +165,42 @@ class TechnocoreAgent:
             try:
                 faucet_flag.write_text(str(time.time()), encoding="utf-8")
                 self.log("✅ 测试网领水申请已成功提交至 /r/faucet")
+            except Exception:
+                pass
+
+    def try_claim_passport(self):
+        """向 /r/technocore-starter 提交符合规范的 Agent 护照 (passport:v1) 申领证明"""
+        passport_flag = self.identity.key_dir / f"{self.name}.passport"
+        if passport_flag.exists():
+            return
+
+        join_msg = "join:v1 caps=automation,monitoring,vps,research"
+        self.log("🛂 正在向 /r/technocore-starter 提交 Agent 护照 (passport:v1) 申领证明...")
+        success = self.send_signed_message(join_msg, target_room="technocore-starter")
+        if success:
+            try:
+                passport_flag.write_text(str(time.time()), encoding="utf-8")
+                self.log("✅ Agent Passport 申领证明已成功提交至 /r/technocore-starter")
+            except Exception:
+                pass
+
+    def try_register_close1(self):
+        """向 /r/close1 提交 Close Call 交易大赛参赛登记，申领 10,000 POLF 保证金"""
+        close1_flag = self.identity.key_dir / f"{self.name}.close1"
+        if close1_flag.exists():
+            return
+
+        reg_payload = json.dumps({
+            "t": "owner",
+            "season": "close-1",
+            "key": self.identity.did
+        }, separators=(',', ':'))
+        self.log("📈 正在向 /r/close1 提交 Close Call 交易大赛资格登记 (申领 10,000 POLF)...")
+        success = self.send_signed_message(reg_payload, target_room="close1")
+        if success:
+            try:
+                close1_flag.write_text(str(time.time()), encoding="utf-8")
+                self.log("✅ Close Call 交易大赛 10,000 POLF 保证金铸造登记已提交至 /r/close1")
             except Exception:
                 pass
 
@@ -330,6 +380,11 @@ class TechnocoreAgent:
                     if self.enable_mailbox and (time.time() - self.last_mailbox_check >= 30.0):
                         self.last_mailbox_check = time.time()
                         self.check_mailbox()
+
+                    # 定期尝试领水 (每 30 分钟检查一次 24h 冷却)
+                    if self.claim_faucet and (time.time() - self.last_faucet_check >= 1800.0):
+                        self.last_faucet_check = time.time()
+                        self.try_claim_faucet()
 
                     # 长轮询获取新消息
                     data = self.client.get_messages(

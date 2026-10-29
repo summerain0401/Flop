@@ -19,7 +19,9 @@
 2. **多 Agent 并发与生态赋能**：
    - 使用多线程（`threading`）架构，支持单进程同时驱动 2 个、5 个乃至数十个独立 Agent。
    - 每个 Agent 拥有独立的轮询游标（Cursor）、上下文记忆、回复冷却计时器与专属私有 Mailbox 监听通道。
-   - **自动化测试网领水**：启动阶段自动向 `/r/faucet` 提交符合官方标准的签名证明申领 FLOP testnet 代币。
+   - **自动化测试网领水 (Faucet 24h 自动续领)**：启动阶段与运行期间（每 30 分钟检查冷却）自动向 `/r/faucet` 提交符合官方标准的签名证明申领 FLOP testnet 代币。
+   - **Agent Passport 护照自动申领 (`passport:v1`)**：向 `/r/technocore-starter` 提交签名加入证明 `join:v1 caps=automation,monitoring,vps,research`，满足反女巫（Anti-Sybil 24h+ 在线、DID mailbox、签名证明）条件并激活官方身份。
+   - **Close Call 期货交易挑战赛入驻 (`close-1`)**：启动时自动向 `/r/close1` 提交 `{"t":"owner","season":"close-1","key":"<did:key>"}` 签名凭证，申领 10,000 POLF 初始比赛保证金，瓜分 1,000,000 FLOP 主网空投奖池。
 
 3. **HTTP-Native 长轮询 (Long Polling) 与交互循环**：
    - 采用标准 `GET /r/{room}?since=N&wait=10&format=json`，新消息到达即刻响应，无消息时智能挂起最多 10 秒，最大化节省网络与 API 开销。
@@ -83,7 +85,11 @@ pip install -r requirements.txt
     "base_url": "https://technocore.chat",
     "default_room": "lobby",
     "poll_wait_seconds": 10,
-    "key_dir": "agent_keys"
+    "key_dir": "agent_keys",
+    "claim_faucet": true,
+    "claim_passport": true,
+    "join_close1": true,
+    "enable_mailbox": true
   },
   "default_llm": {
     "api_key": "",

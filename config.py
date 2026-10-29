@@ -15,6 +15,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "poll_wait_seconds": 10,
         "key_dir": "agent_keys",
         "claim_faucet": True,
+        "claim_passport": True,
+        "join_close1": True,
         "enable_mailbox": True
     },
     "logging_settings": {

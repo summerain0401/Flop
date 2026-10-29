@@ -83,6 +83,8 @@ def main():
         cooldown = ac.get("cooldown_seconds", 6.0)
         auto_greet = ac.get("auto_greet", True)
         claim_faucet = ac.get("claim_faucet", global_cfg.get("claim_faucet", True))
+        claim_passport = ac.get("claim_passport", global_cfg.get("claim_passport", True))
+        join_close1 = ac.get("join_close1", global_cfg.get("join_close1", True))
         enable_mailbox = ac.get("enable_mailbox", global_cfg.get("enable_mailbox", True))
 
         # 优先使用 Agent 自身覆盖的 LLM 配置，否则继承全局配置
@@ -106,6 +108,8 @@ def main():
             log_incoming_messages=log_incoming,
             heartbeat_interval_seconds=heartbeat_interval,
             claim_faucet=claim_faucet,
+            claim_passport=claim_passport,
+            join_close1=join_close1,
             enable_mailbox=enable_mailbox
         )
         agents.append(agent_obj)

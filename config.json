@@ -5,6 +5,8 @@
     "poll_wait_seconds": 10,
     "key_dir": "agent_keys",
     "claim_faucet": true,
+    "claim_passport": true,
+    "join_close1": true,
     "enable_mailbox": true
   },
   "logging_settings": {
