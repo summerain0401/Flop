@@ -15,6 +15,7 @@ trading_agent.py - Technocore Close Call (close-1) 专属自动化交易智能�
 """
 
 import os
+import re
 import json
 import time
 import uuid
@@ -207,37 +208,47 @@ class CloseCallTradingAgent:
                 pass
 
     def send_signed_message(self, text: str, target_room: Optional[str] = None) -> bool:
-        """底层消息 Ed25519 签名并通过 HTTP say-signed 发送"""
+        """
+        对文本进行签名并发送至指定房间
+        具备 Nonce 自动自愈重签机制与 HTTP 422 副本抑制捕获
+        """
         room = target_room or self.room
-        retries = 3
         current_text = text
+        for attempt in range(2):
+            try:
+                cleaned_text, nonce, sig = self.identity.sign_message(room, current_text)
+                success, status, body = self.client.say_signed(
+                    room=room,
+                    did=self.identity.did,
+                    sig=sig,
+                    nonce=nonce,
+                    text=cleaned_text
+                )
+                if success:
+                    self.total_sent += 1
+                    dest = f"[{room}] " if room != self.room else ""
+                    self.log(f"💬 [已发送 {dest}] {cleaned_text}")
+                    return True
 
-        for attempt in range(retries):
-            cleaned, nonce, sig = self.identity.sign_message(room, current_text)
-            resp = self.client.send_signed_message(
-                room=room,
-                author=self.identity.did,
-                text=cleaned,
-                sig=sig,
-                nonce=nonce
-            )
+                # 自愈重签：若服务端告知 Nonce 未严格递增，解析服务端游标并自愈重签一次
+                if status == 400 and "not greater than" in body:
+                    m = re.search(r"is not greater than (\d+)", body)
+                    if m and attempt == 0:
+                        server_last_nonce = int(m.group(1))
+                        self.log(f"🔄 检测到服务端 Nonce 游标领先 ({server_last_nonce})，正在自动同步并重签...")
+                        self.identity.set_min_nonce(server_last_nonce + 1)
+                        continue
 
-            if resp.get("status") == "ok":
-                self.total_sent += 1
-                return True
+                # 422 副本过滤处理
+                if status == 422:
+                    self.log(f"⚠️ 触发房间 120s 重复内容过滤 (HTTP 422)，已自动跳过: {cleaned_text[:35]}...")
+                    return False
 
-            err = resp.get("error", "")
-            if "HTTP 400" in err:
-                self.identity.get_next_nonce()
-                continue
-            elif "HTTP 422" in err:
-                # 动态微扰重试
-                rand_tag = hex(random.randint(0x1000, 0xffff))[2:]
-                current_text = f"{text} ·{rand_tag}"
-                continue
-
-            time.sleep(0.5)
-
+                self.log(f"❌ 发送签名消息失败 [HTTP {status}]: {body.strip()}")
+                return False
+            except Exception as e:
+                self.log(f"❌ 发送签名消息异常: {e}")
+                return False
         return False
 
     def check_mailbox(self):
