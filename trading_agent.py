@@ -352,6 +352,11 @@ class CloseCallTradingAgent:
             self.total_orders_placed += 1
             self.last_trade_action_time = now
             self.my_orders[order_id] = terms
+            # 内存防暴涨: 保持最多 200 笔最近挂单记录
+            if len(self.my_orders) > 200:
+                old_keys = list(self.my_orders.keys())[:-100]
+                for k in old_keys:
+                    self.my_orders.pop(k, None)
             self.log(
                 f"📊 [做市挂单] {side.upper()} {qty} NVDA @ ${target_px:.2f} "
                 f"(Mid: ${mid_px:.2f}, ID: {order_id})"
@@ -383,6 +388,9 @@ class CloseCallTradingAgent:
             if not order_id or order_id in self.seen_order_ids or maker == self.identity.did:
                 return
             self.seen_order_ids.add(order_id)
+            # 内存防暴涨: 保持最多 3000 个近期已观测订单 ID
+            if len(self.seen_order_ids) > 3000:
+                self.seen_order_ids = set(list(self.seen_order_ids)[-1500:])
 
             px = float(px_str)
             qty = float(qty_str)
