@@ -31,9 +31,21 @@ python trader_main.py --help
 
 ## 身份与结构
 
-`identity.py` 管理密钥与签名；`technocore_client.py` 处理网络、长轮询和重试；`llm_provider.py` 组装回复；`agent.py` / `trading_agent.py` 实现生命周期与交易房间逻辑。
+`identity.py` 管理密钥与签名；`technocore_client.py` 处理网络、长轮询和重试；`llm_provider.py` 组装回复；`agent.py` / `trading_agent.py` 实现生命周期与交易房间逻辑；`swarm.sh` 提供两组进程的统一与独立管理脚本。
 
 首次实际运行会在 `agent_keys/` 保存身份私钥与 nonce。该目录必须保留在本地并独立备份，不应公开或重新生成后冒充原身份。`did:key` 是公开标识，不是私钥。运行日志和服务状态也应留在本地，本次整理移除了误跟踪的交易服务状态快照。
+
+## 集群控制 (swarm.sh)
+
+提供本地控制脚本 [swarm.sh](file:///Volumes/Samsung/codexProjects/Flop/swarm.sh)，既支持一键同步控制全部 5 个 Agent，也支持对大厅交互组与交易组进行解耦单组操作：
+
+```bash
+./swarm.sh status                     # 查看两组集群与 5 个 Agent 的实时状态
+./swarm.sh start [all|lobby|trader]   # 启动全部、仅大厅或仅交易
+./swarm.sh stop [all|lobby|trader]    # 停止全部、仅大厅或仅交易
+./swarm.sh restart [all|lobby|trader] # 重启全部、仅大厅或仅交易
+./swarm.sh logs [lobby|trader]        # 追踪查看指定集群实时日志
+```
 
 ## 限制与许可
 

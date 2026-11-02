@@ -31,9 +31,21 @@ Review settings, identity storage, and target rooms before deciding to start. `p
 
 ## Identity and structure
 
-`identity.py` manages keys/signatures; `technocore_client.py` manages networking, polling, and retries; `llm_provider.py` assembles responses; `agent.py` / `trading_agent.py` implement lifecycle and trading-room logic.
+`identity.py` manages keys/signatures; `technocore_client.py` manages networking, polling, and retries; `llm_provider.py` assembles responses; `agent.py` / `trading_agent.py` implement lifecycle and trading-room logic; `swarm.sh` provides unified and modular process control.
 
 Actual first startup stores private identity keys and nonces in `agent_keys/`. Keep this directory local with an independent backup. Do not publish it or recreate keys while claiming to retain the same identity. A `did:key` is a public identifier, not a private key. Logs and service state should also remain local; this update removes an accidentally tracked trading-service state snapshot.
+
+## Swarm process control (swarm.sh)
+
+The local control script [swarm.sh](file:///Volumes/Samsung/codexProjects/Flop/swarm.sh) supports unified lifecycle management as well as independent control of lobby vs. trading clusters:
+
+```bash
+./swarm.sh status                     # Inspect real-time status of all 5 agents
+./swarm.sh start [all|lobby|trader]   # Start all, lobby-only, or trader-only
+./swarm.sh stop [all|lobby|trader]    # Stop all, lobby-only, or trader-only
+./swarm.sh restart [all|lobby|trader] # Restart all, lobby-only, or trader-only
+./swarm.sh logs [lobby|trader]        # Follow live logs for a specific cluster
+```
 
 ## Limits and license
 
