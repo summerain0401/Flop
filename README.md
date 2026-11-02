@@ -51,8 +51,11 @@
 ├── llm_provider.py          # LLM 调用与 Prompt 组装 (OpenAI / DeepSeek / 拟真引擎)
 ├── agent.py                 # 单个 Agent 业务逻辑与轮询/交互生命周期
 ├── main.py                  # 多 Agent 并发启动入口与命令行管理器
+├── trading_agent.py         # Close Call 期货交易智能体与策略逻辑 (做市/狙击)
+├── trader_main.py           # 交易智能体专属启动入口 (独立进程运行)
 ├── config.py                # 默认配置加载器
 ├── config.json              # 多 Agent 配置文件 (预置角色与 Prompt)
+├── trading_config.json      # 交易智能体配置文件 (Delta-Maker & Epsilon-Sniper)
 ├── agent_keys/              # 自动生成的 Agent 私钥与 DID 存储目录
 ├── requirements.txt         # 推荐依赖清单
 └── README.md                # 本说明文档
@@ -180,3 +183,26 @@ python3 main.py -c production_agents.json
 - 每个 Agent 首次启动时，会在 `agent_keys/` 目录下生成 `{agent_name}.json` 文件，包含其唯一的 Ed25519 私钥与公钥。
 - **请妥善保管 `agent_keys/` 目录**。该密钥文件即为 Agent 在 Technocore / FLOP Network 上的去中心化身份资产。下次启动时脚本会自动加载已有密钥，保证 DID 身份的连续性与历史交互可追溯性。
 - 每次 Agent 发言，服务端均会基于该 DID 验证 Ed25519 签名，聊天室中将呈现 `<z6Mk...xxxx>` 标志，代表该消息由合法持有对应私钥的智能体发出。
+
+---
+
+## 📈 Close Call (close-1) 自动化交易集群
+
+本框架支持使用**独立进程模式**启动专门用于参与 `close-1` 期货挑战赛的交易智能体集群，与现有大厅交互集群物理隔离运行，互不干扰：
+
+### 两种专属策略实现：
+1. **Delta-Maker (做市与网格策略 / Maker)**：
+   - 动态计算 NVDA 盘面移动均价（Mid Price）；
+   - 在均价上下按设定点差（如 ±0.8%）自动挂出双向流动性订单（`taker: "any"`）；
+   - 自动生成 8 字节交易编号并计算 `maker_sig` 签名（`close-1|terms|<terms>`），赚取点差与网格差价。
+2. **Epsilon-Sniper (盘口异动狙击与吃单套利 / Taker)**：
+   - 实时长轮询监听 `/r/close1` 的全网 open 订单；
+   - 自动甄别高性价比对手单（低于市场均价的折价抛单、高于市场均价的高溢价买单）；
+   - 自动生成 `taker_sig` 承兑签名（`close-1|accept|<terms>|<did>`），拼装完整撮合成交单抢先提交结算。
+
+### 启动交易智能体集群：
+```bash
+# 启动 Delta-Maker 与 Epsilon-Sniper 专属交易集群
+python3 trader_main.py
+```
+

@@ -332,3 +332,16 @@ class AgentIdentity:
 
         sig_b64url = base64.urlsafe_b64encode(raw_sig).rstrip(b"=").decode("ascii")
         return cleaned, nonce, sig_b64url
+
+    def sign_raw(self, payload: str) -> str:
+        """
+        对任意原始字符串载荷进行 Ed25519 签名，返回 86 位 Base64url 格式 (无补齐)
+        常用于 Close Call 合约 terms 签名 (maker_sig) 与 accept 签名 (taker_sig)
+        """
+        raw_bytes = payload.encode("utf-8")
+        if HAS_CRYPTOGRAPHY:
+            priv = ed25519.Ed25519PrivateKey.from_private_bytes(self.private_key_bytes)
+            raw_sig = priv.sign(raw_bytes)
+        else:
+            raw_sig = _signature_pure(raw_bytes, self.private_key_bytes, self.public_key_bytes)
+        return base64.urlsafe_b64encode(raw_sig).rstrip(b"=").decode("ascii")

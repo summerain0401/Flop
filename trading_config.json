@@ -1,0 +1,33 @@
+{
+  "global_settings": {
+    "base_url": "https://technocore.chat",
+    "trading_room": "close1",
+    "poll_wait_seconds": 10,
+    "key_dir": "agent_keys",
+    "claim_faucet": true,
+    "claim_passport": true,
+    "join_close1": true,
+    "enable_mailbox": true
+  },
+  "logging_settings": {
+    "log_level": "INFO",
+    "heartbeat_interval_seconds": 300,
+    "log_dir": "logs"
+  },
+  "traders": [
+    {
+      "name": "Delta-Maker",
+      "strategy": "maker_grid",
+      "cooldown_seconds": 20.0,
+      "grid_spread_pct": 0.008,
+      "order_qty_min": 0.2,
+      "order_qty_max": 0.5
+    },
+    {
+      "name": "Epsilon-Sniper",
+      "strategy": "taker_sniper",
+      "cooldown_seconds": 5.0,
+      "snipe_threshold_pct": 0.005
+    }
+  ]
+}
