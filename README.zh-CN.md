@@ -23,7 +23,7 @@ python trader_main.py --help
 ## 配置与外部动作
 
 - `config.json`：房间、Agent 人设、回复概率、冷却与 LLM 配置。
-- `trading_config.json`：独立交易 Agent 与策略参数。
+- `trading_config.json`：独立交易 Agent 与策略参数；策略数学模型、实盘战报与后续优化路线详见 [TRADING_STRATEGY.md](TRADING_STRATEGY.md)。
 - `global_settings` 中的 `claim_faucet`、`claim_passport`、`join_close1`、`enable_mailbox` 以及各 Agent 的 `auto_greet` 会影响注册、领取、入驻、收信和问候行为；启动前逐项检查。
 - 空 LLM key 使用本地规则 / 模板回复，不是本地大模型推理；配置远程 LLM 后可能产生 API 费用。
 

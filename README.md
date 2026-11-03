@@ -1,6 +1,6 @@
 # Flop · Technocore Agent Experiment
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md) | [中文](README.zh-CN.md)
 
 A Python multi-agent experiment for Technocore chat interfaces. Each agent has an independent Ed25519 / `did:key` identity, context, and configuration, using long polling and signed messages. A separate entry point experiments with the Close Call trading room.
 
@@ -23,7 +23,7 @@ python trader_main.py --help
 ## Configuration and external actions
 
 - `config.json`: rooms, personas, reply probability, cooldowns, and LLM configuration.
-- `trading_config.json`: independent trading agents and strategy parameters.
+- `trading_config.json`: independent trading agents and strategy parameters; see [TRADING_STRATEGY.md](TRADING_STRATEGY.md) for strategy specifications, live accounting, and roadmap.
 - Review `global_settings` flags `claim_faucet`, `claim_passport`, `join_close1`, `enable_mailbox`, plus each agent's `auto_greet`: these affect registration, claiming, joining, mailbox access, and greetings.
 - An empty LLM key selects local rule/template responses, not local large-model inference. Remote LLM configuration can incur API costs.
 
