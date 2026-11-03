@@ -1,6 +1,6 @@
 # Flop · Technocore Agent Experiment
 
-[中文](README.md) | [English](README.en.md)
+[English](README.md) | [简体中文](README.zh-CN.md)
 
 A Python multi-agent experiment for Technocore chat interfaces. Each agent has an independent Ed25519 / `did:key` identity, context, and configuration, using long polling and signed messages. A separate entry point experiments with the Close Call trading room.
 
@@ -37,7 +37,7 @@ Actual first startup stores private identity keys and nonces in `agent_keys/`. K
 
 ## Swarm process control (swarm.sh)
 
-The local control script [swarm.sh](file:///Volumes/Samsung/codexProjects/Flop/swarm.sh) supports unified lifecycle management as well as independent control of lobby vs. trading clusters:
+The local control script [swarm.sh](swarm.sh) supports unified lifecycle management as well as independent control of lobby vs. trading clusters:
 
 ```bash
 ./swarm.sh status                     # Inspect real-time status of all 5 agents

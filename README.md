@@ -1,14 +1,14 @@
-# Flop · Technocore Agent 实验
+# Flop · Technocore Agent Experiment
 
-[中文](README.md) | [English](README.en.md)
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-面向 Technocore 聊天接口的 Python 多智能体实验。每个 Agent 使用独立的 Ed25519 / `did:key` 身份、上下文和配置，通过长轮询监听房间并提交签名消息；另有 Close Call 交易房间实验入口。
+A Python multi-agent experiment for Technocore chat interfaces. Each agent has an independent Ed25519 / `did:key` identity, context, and configuration, using long polling and signed messages. A separate entry point experiments with the Close Call trading room.
 
-**当前状态：依赖外部平台的研究代码。** 房间、Faucet、Passport 与活动规则可能变化；仓库中的旧活动名称、奖励和“官方适配”说法不代表当前资格、奖励或平台背书。本次整理未连接平台核验。
+**Status: research code dependent on an external platform.** Rooms, Faucet, Passport, and campaign rules may change. Historical activity names, rewards, and “official compatibility” claims do not establish current eligibility, rewards, or endorsement. No live platform verification was performed in this update.
 
-## 安装与只读入口检查
+## Install and inspect safely
 
-源码含 Python 3.10+ 类型语法，建议使用独立环境：
+The source uses Python 3.10+ typing syntax. Use an isolated environment:
 
 ```bash
 python3 -m venv .venv
@@ -18,37 +18,37 @@ python main.py --help
 python trader_main.py --help
 ```
 
-以上 `--help` 不启动 Agent。正常执行 `python main.py` 会运行配置中的 Agent 并可能自动向外部平台发消息；`python trader_main.py` 会启动交易房间策略，二者都不是离线演示。
+`--help` does not start agents. Running `python main.py` normally starts configured agents and can automatically send external messages. `python trader_main.py` starts trading-room strategies. Neither is an offline demo.
 
-## 配置与外部动作
+## Configuration and external actions
 
-- `config.json`：房间、Agent 人设、回复概率、冷却与 LLM 配置。
-- `trading_config.json`：独立交易 Agent 与策略参数。
-- `global_settings` 中的 `claim_faucet`、`claim_passport`、`join_close1`、`enable_mailbox` 以及各 Agent 的 `auto_greet` 会影响注册、领取、入驻、收信和问候行为；启动前逐项检查。
-- 空 LLM key 使用本地规则 / 模板回复，不是本地大模型推理；配置远程 LLM 后可能产生 API 费用。
+- `config.json`: rooms, personas, reply probability, cooldowns, and LLM configuration.
+- `trading_config.json`: independent trading agents and strategy parameters.
+- Review `global_settings` flags `claim_faucet`, `claim_passport`, `join_close1`, `enable_mailbox`, plus each agent's `auto_greet`: these affect registration, claiming, joining, mailbox access, and greetings.
+- An empty LLM key selects local rule/template responses, not local large-model inference. Remote LLM configuration can incur API costs.
 
-先核对配置、身份保存位置和要访问的房间，再决定是否启动。常用参数示例见 `python main.py --help`，包括 `--config`、`--agents`、`--room`、`--key-dir` 和 `--verbose`。
+Review settings, identity storage, and target rooms before deciding to start. `python main.py --help` lists `--config`, `--agents`, `--room`, `--key-dir`, and `--verbose`.
 
-## 身份与结构
+## Identity and structure
 
-`identity.py` 管理密钥与签名；`technocore_client.py` 处理网络、长轮询和重试；`llm_provider.py` 组装回复；`agent.py` / `trading_agent.py` 实现生命周期与交易房间逻辑；`swarm.sh` 提供两组进程的统一与独立管理脚本。
+`identity.py` manages keys/signatures; `technocore_client.py` manages networking, polling, and retries; `llm_provider.py` assembles responses; `agent.py` / `trading_agent.py` implement lifecycle and trading-room logic; `swarm.sh` provides unified and modular process control.
 
-首次实际运行会在 `agent_keys/` 保存身份私钥与 nonce。该目录必须保留在本地并独立备份，不应公开或重新生成后冒充原身份。`did:key` 是公开标识，不是私钥。运行日志和服务状态也应留在本地，本次整理移除了误跟踪的交易服务状态快照。
+Actual first startup stores private identity keys and nonces in `agent_keys/`. Keep this directory local with an independent backup. Do not publish it or recreate keys while claiming to retain the same identity. A `did:key` is a public identifier, not a private key. Logs and service state should also remain local; this update removes an accidentally tracked trading-service state snapshot.
 
-## 集群控制 (swarm.sh)
+## Swarm process control (swarm.sh)
 
-提供本地控制脚本 [swarm.sh](file:///Volumes/Samsung/codexProjects/Flop/swarm.sh)，既支持一键同步控制全部 5 个 Agent，也支持对大厅交互组与交易组进行解耦单组操作：
+The local control script [swarm.sh](swarm.sh) supports unified lifecycle management as well as independent control of lobby vs. trading clusters:
 
 ```bash
-./swarm.sh status                     # 查看两组集群与 5 个 Agent 的实时状态
-./swarm.sh start [all|lobby|trader]   # 启动全部、仅大厅或仅交易
-./swarm.sh stop [all|lobby|trader]    # 停止全部、仅大厅或仅交易
-./swarm.sh restart [all|lobby|trader] # 重启全部、仅大厅或仅交易
-./swarm.sh logs [lobby|trader]        # 追踪查看指定集群实时日志
+./swarm.sh status                     # Inspect real-time status of all 5 agents
+./swarm.sh start [all|lobby|trader]   # Start all, lobby-only, or trader-only
+./swarm.sh stop [all|lobby|trader]    # Stop all, lobby-only, or trader-only
+./swarm.sh restart [all|lobby|trader] # Restart all, lobby-only, or trader-only
+./swarm.sh logs [lobby|trader]        # Follow live logs for a specific cluster
 ```
 
-## 限制与许可
+## Limits and license
 
-签名、网络重试和策略代码不保证平台接受请求或策略盈利；自动回复可能不符合房间规则，需自行确认。仓库没有独立测试目录；本次未发送消息、申领奖励或提交交易。
+Signature, retry, and strategy code do not guarantee platform acceptance or profitability. Check room rules before enabling automatic replies. There is no dedicated test directory. No messages, reward claims, or trades were submitted in this update.
 
-当前默认分支未提供项目级许可证文件；公开可见不等于授予复用许可。第三方依赖及素材保留各自条款。
+The default branch does not include a project-level license file. Public visibility does not itself grant reuse rights. Third-party dependencies and assets retain their own terms.
