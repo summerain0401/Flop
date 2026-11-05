@@ -80,7 +80,7 @@ class CloseCallTradingAgent:
 
         # 行情追踪与盘口记忆
         self.price_history: deque = deque(maxlen=60)
-        self.latest_market_sweep: int = 3042  # 默认基准 sweep 编号，随盘面动态递增
+        self.latest_market_sweep: int = 3312  # 默认基准 sweep 编号，随盘面动态递增
         self.seen_order_ids: set = set()      # 防止重复吃单或处理
         self.my_orders: Dict[str, Dict[str, Any]] = {}
 
@@ -88,6 +88,7 @@ class CloseCallTradingAgent:
         self.total_received: int = 0
         self.total_orders_placed: int = 0
         self.total_orders_sniped: int = 0
+        self.total_orders_filled: int = 0
         self.total_sent: int = 0
         self.interval_received: int = 0
 
@@ -312,15 +313,15 @@ class CloseCallTradingAgent:
             return
 
         mid_px = self.get_mid_price()
-        # 产生随机网格偏置，规避单一价位拥挤
-        jitter = random.uniform(-0.002, 0.002)
-        spread = self.grid_spread_pct + jitter
+        # 产生微幅随机网格偏置，规避单一价位拥挤
+        jitter = random.uniform(-0.0005, 0.0005)
+        spread = max(0.001, self.grid_spread_pct + jitter)
 
         # 生成买单 (略低于中间价) 与卖单 (略高于中间价)
         buy_px = round(mid_px * (1.0 - spread), 2)
         sell_px = round(mid_px * (1.0 + spread), 2)
         qty = round(random.uniform(self.order_qty_min, self.order_qty_max), 2)
-        sweep_until = max(self.latest_market_sweep, 3042)
+        sweep_until = max(self.latest_market_sweep, 3312)
 
         # 轮流交替挂买或卖单，控制资金占用
         side = "buy" if (self.total_orders_placed % 2 == 0) else "sell"
@@ -383,6 +384,7 @@ class CloseCallTradingAgent:
             side = terms.get("side")
             px_str = terms.get("px")
             qty_str = terms.get("qty")
+            until = int(terms.get("until", 0))
 
             # 过滤自己挂出的单或已处理过的单
             if not order_id or order_id in self.seen_order_ids or maker == self.identity.did:
@@ -391,6 +393,10 @@ class CloseCallTradingAgent:
             # 内存防暴涨: 保持最多 3000 个近期已观测订单 ID
             if len(self.seen_order_ids) > 3000:
                 self.seen_order_ids = set(list(self.seen_order_ids)[-1500:])
+
+            # 过滤已过期订单 (until 小于当前市场最新轮次)
+            if until > 0 and self.latest_market_sweep > 0 and until < self.latest_market_sweep:
+                return
 
             px = float(px_str)
             qty = float(qty_str)
@@ -441,6 +447,28 @@ class CloseCallTradingAgent:
         except Exception:
             pass
 
+    def check_maker_fills(self, msg: Dict[str, Any]):
+        """检测是否有 Taker 承兑了我们挂出的做市订单"""
+        text = msg.get("text", "")
+        if '"t":"trade"' not in text or '"taker_sig"' not in text:
+            return
+        try:
+            data = json.loads(text)
+            terms = data.get("terms", {})
+            if terms.get("maker") == self.identity.did and data.get("taker_sig"):
+                order_id = terms.get("id")
+                side = terms.get("side", "").upper()
+                px = terms.get("px")
+                qty = terms.get("qty")
+                taker = data.get("taker", "")
+                self.total_orders_filled += 1
+                self.log(
+                    f"🎉 [做市成交] 我们的挂单被对手方承兑成交! Taker: {taker[:16]}... | "
+                    f"{side} {qty} NVDA @ ${px} (ID: {order_id})"
+                )
+        except Exception:
+            pass
+
     def check_heartbeat(self):
         """定期汇报健康心跳与交易战报"""
         now = time.time()
@@ -449,7 +477,8 @@ class CloseCallTradingAgent:
             if self.strategy == "maker_grid":
                 self.log(
                     f"💓 [做市心跳] 运行正常 | 累计监听 {self.total_received} 条 | "
-                    f"累计挂单 {self.total_orders_placed} 笔 | 参考中间价: ${mid_px:.2f}"
+                    f"累计挂单 {self.total_orders_placed} 笔 | 已被承兑成交 {self.total_orders_filled} 笔 | "
+                    f"参考中间价: ${mid_px:.2f}"
                 )
             else:
                 self.log(
@@ -515,6 +544,8 @@ class CloseCallTradingAgent:
                             # 若为狙击策略，对接收到的订单进行实时套利评估
                             if self.strategy == "taker_sniper":
                                 self.evaluate_taker_snipe(msg)
+                            elif self.strategy == "maker_grid":
+                                self.check_maker_fills(msg)
                     else:
                         if "last_seq" in data and data["last_seq"] is not None:
                             self.last_seq = data["last_seq"]

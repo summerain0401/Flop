@@ -19,7 +19,7 @@
       "name": "Delta-Maker",
       "strategy": "maker_grid",
       "cooldown_seconds": 20.0,
-      "grid_spread_pct": 0.008,
+      "grid_spread_pct": 0.0035,
       "order_qty_min": 0.2,
       "order_qty_max": 0.5
     },
@@ -27,7 +27,7 @@
       "name": "Epsilon-Sniper",
       "strategy": "taker_sniper",
       "cooldown_seconds": 5.0,
-      "snipe_threshold_pct": 0.005
+      "snipe_threshold_pct": 0.003
     }
   ]
 }
