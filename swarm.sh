@@ -2,14 +2,14 @@
 # ==============================================================================
 # swarm.sh - Technocore Multi-Agent Swarm Unified Controller
 # ==============================================================================
-# 支持一键全局启停 (5个 Agent 同步) 或精准单组启停 (大厅 3 个 / 交易 2 个解耦)
+# 支持一键全局启停 (6个 Agent 同步) 或精准单组启停 (大厅 3 个 / 交易 2 个 / 有用功 1 个完全解耦)
 #
 # 使用方法:
-#   ./swarm.sh start [all|lobby|trader]     # 启动服务 (默认 all)
-#   ./swarm.sh stop [all|lobby|trader]      # 优雅停止服务 (默认 all)
-#   ./swarm.sh restart [all|lobby|trader]   # 平滑重启服务 (默认 all)
-#   ./swarm.sh status                       # 查看全部 Agent 实时聚合状态与战报
-#   ./swarm.sh logs [lobby|trader]          # 追踪查看指定集群日志
+#   ./swarm.sh start [all|lobby|trader|kibble]     # 启动服务 (默认 all)
+#   ./swarm.sh stop [all|lobby|trader|kibble]      # 优雅停止服务 (默认 all)
+#   ./swarm.sh restart [all|lobby|trader|kibble]   # 平滑重启服务 (默认 all)
+#   ./swarm.sh status                              # 查看全部 6 个 Agent 实时状态
+#   ./swarm.sh logs [lobby|trader|kibble]          # 追踪查看指定集群日志
 # ==============================================================================
 
 set -e
@@ -31,11 +31,15 @@ NC='\033[0m' # No Color
 # 辅助函数: 获取运行中进程 PID
 # ------------------------------------------------------------------------------
 get_lobby_pid() {
-    pgrep -fl "main.py" 2>/dev/null | grep -v "trader_main.py" | awk '{print $1}' | head -n 1 || true
+    pgrep -fl "main.py" 2>/dev/null | grep -v "trader_main.py" | grep -v "kibble_main.py" | awk '{print $1}' | head -n 1 || true
 }
 
 get_trader_pid() {
     pgrep -fl "trader_main.py" 2>/dev/null | awk '{print $1}' | head -n 1 || true
+}
+
+get_kibble_pid() {
+    pgrep -fl "kibble_main.py" 2>/dev/null | awk '{print $1}' | head -n 1 || true
 }
 
 get_process_uptime() {
@@ -84,6 +88,25 @@ start_trader() {
         echo -e "${GREEN}✅ [交易挑战赛集群] 启动成功 (PID: ${new_pid}, 日志: logs/trader.log)${NC}"
     else
         echo -e "${RED}❌ [交易挑战赛集群] 启动失败，请检查 logs/trader.log 查看详细错误。${NC}"
+        return 1
+    fi
+}
+
+start_kibble() {
+    local pid=$(get_kibble_pid)
+    if [ -n "$pid" ]; then
+        echo -e "${YELLOW}⚠️  [有用功推理集群] 已经在运行中 (PID: ${pid}, 运行时长: $(get_process_uptime "$pid"))，无需重复启动。${NC}"
+        return 0
+    fi
+
+    echo -e "${CYAN}🚀 正在启动 [有用功推理集群] (Zeta-Worker)...${NC}"
+    nohup python3 kibble_main.py >> logs/kibble.log 2>&1 &
+    sleep 2
+    local new_pid=$(get_kibble_pid)
+    if [ -n "$new_pid" ]; then
+        echo -e "${GREEN}✅ [有用功推理集群] 启动成功 (PID: ${new_pid}, 日志: logs/kibble.log)${NC}"
+    else
+        echo -e "${RED}❌ [有用功推理集群] 启动失败，请检查 logs/kibble.log 查看详细错误。${NC}"
         return 1
     fi
 }
@@ -137,15 +160,39 @@ stop_trader() {
     echo -e "${GREEN}✅ [交易挑战赛集群] 已终止。${NC}"
 }
 
+stop_kibble() {
+    local pid=$(get_kibble_pid)
+    if [ -z "$pid" ]; then
+        echo -e "${YELLOW}ℹ️  [有用功推理集群] 当前未运行。${NC}"
+        return 0
+    fi
+
+    echo -e "${CYAN}🛑 正在通知 [有用功推理集群] (PID: ${pid}) 优雅停机...${NC}"
+    kill -15 "$pid" 2>/dev/null || true
+
+    for i in {1..8}; do
+        if ! ps -p "$pid" > /dev/null 2>&1; then
+            echo -e "${GREEN}✅ [有用功推理集群] 已安全退出。${NC}"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo -e "${YELLOW}⚠️  [有用功推理集群] 仍在运行，尝试强制退出...${NC}"
+    kill -9 "$pid" 2>/dev/null || true
+    echo -e "${GREEN}✅ [有用功推理集群] 已终止。${NC}"
+}
+
 # ------------------------------------------------------------------------------
 # 状态模块
 # ------------------------------------------------------------------------------
 show_status() {
     local lobby_pid=$(get_lobby_pid)
     local trader_pid=$(get_trader_pid)
+    local kibble_pid=$(get_kibble_pid)
 
     echo -e "${BOLD}========================================================================${NC}"
-    echo -e "${BOLD}              Technocore Multi-Agent Swarm 运行状态监控                   ${NC}"
+    echo -e "${BOLD}              Technocore Multi-Agent Swarm 运行状态监控 (全 6 个)          ${NC}"
     echo -e "${BOLD}========================================================================${NC}"
 
     # 1. 大厅交互集群状态
@@ -177,6 +224,21 @@ show_status() {
         echo -e "🔴 ${BOLD}[交易挑战赛集群] (Close Call Swarm)${NC} - ${RED}STOPPED${NC}"
     fi
 
+    echo ""
+
+    # 3. 有用功推理集群状态
+    if [ -n "$kibble_pid" ]; then
+        local uptime=$(get_process_uptime "$kibble_pid")
+        echo -e "🟢 ${BOLD}[有用功推理集群] (Kibble PoUI Swarm)${NC} - ${GREEN}RUNNING${NC}"
+        echo -e "   • 进程 PID    : ${CYAN}${kibble_pid}${NC}"
+        echo -e "   • 持续运行时长 : ${GREEN}${uptime}${NC}"
+        echo -e "   • 目标房间    : ${BLUE}/r/kibble${NC}"
+        echo -e "   • 成员 Agent  : ${BOLD}Zeta-Worker (有用功求解工人)${NC}"
+        echo -e "   • 任务职能    : 毫秒级抢单 (CLAIM v1)、高质量解题、成果交付 (DELIVER v1)、判决监控 (ATTEST v1)"
+    else
+        echo -e "🔴 ${BOLD}[有用功推理集群] (Kibble PoUI Swarm)${NC} - ${RED}STOPPED${NC}"
+    fi
+
     echo -e "${BOLD}========================================================================${NC}"
 }
 
@@ -188,6 +250,9 @@ show_logs() {
     if [ "$target" = "trader" ]; then
         echo -e "${CYAN}📜 正在追踪交易集群最新日志 (按 Ctrl+C 退出)...${NC}"
         tail -f -n 30 logs/trader.log 2>/dev/null || (ls -t /Users/spring/.gemini/antigravity-cli/brain/bf9c3952-f057-4478-8a1c-da04ce373861/.system_generated/tasks/task-655.log 2>/dev/null | xargs tail -f -n 30)
+    elif [ "$target" = "kibble" ]; then
+        echo -e "${CYAN}📜 正在追踪有用功集群最新日志 (按 Ctrl+C 退出)...${NC}"
+        tail -f -n 30 logs/kibble.log 2>/dev/null
     else
         echo -e "${CYAN}📜 正在追踪大厅交互最新日志 (按 Ctrl+C 退出)...${NC}"
         tail -f -n 30 logs/lobby.log 2>/dev/null || (ls -t /Users/spring/.gemini/antigravity-cli/brain/bf9c3952-f057-4478-8a1c-da04ce373861/.system_generated/tasks/task-466.log 2>/dev/null | xargs tail -f -n 30)
@@ -206,6 +271,7 @@ case "$COMMAND" in
             all)
                 start_lobby
                 start_trader
+                start_kibble
                 ;;
             lobby)
                 start_lobby
@@ -213,8 +279,11 @@ case "$COMMAND" in
             trader)
                 start_trader
                 ;;
+            kibble)
+                start_kibble
+                ;;
             *)
-                echo -e "${RED}未知目标: $TARGET (可选: all, lobby, trader)${NC}"
+                echo -e "${RED}未知目标: $TARGET (可选: all, lobby, trader, kibble)${NC}"
                 exit 1
                 ;;
         esac
@@ -222,6 +291,7 @@ case "$COMMAND" in
     stop)
         case "$TARGET" in
             all)
+                stop_kibble
                 stop_trader
                 stop_lobby
                 ;;
@@ -231,8 +301,11 @@ case "$COMMAND" in
             trader)
                 stop_trader
                 ;;
+            kibble)
+                stop_kibble
+                ;;
             *)
-                echo -e "${RED}未知目标: $TARGET (可选: all, lobby, trader)${NC}"
+                echo -e "${RED}未知目标: $TARGET (可选: all, lobby, trader, kibble)${NC}"
                 exit 1
                 ;;
         esac
@@ -240,11 +313,13 @@ case "$COMMAND" in
     restart)
         case "$TARGET" in
             all)
+                stop_kibble
                 stop_trader
                 stop_lobby
                 sleep 1
                 start_lobby
                 start_trader
+                start_kibble
                 ;;
             lobby)
                 stop_lobby
@@ -256,8 +331,13 @@ case "$COMMAND" in
                 sleep 1
                 start_trader
                 ;;
+            kibble)
+                stop_kibble
+                sleep 1
+                start_kibble
+                ;;
             *)
-                echo -e "${RED}未知目标: $TARGET (可选: all, lobby, trader)${NC}"
+                echo -e "${RED}未知目标: $TARGET (可选: all, lobby, trader, kibble)${NC}"
                 exit 1
                 ;;
         esac
@@ -270,11 +350,11 @@ case "$COMMAND" in
         ;;
     *)
         echo -e "${BOLD}Technocore Swarm 控制器使用帮助:${NC}"
-        echo -e "  $0 status                     # 查看全部 Agent 实时状态"
-        echo -e "  $0 start [all|lobby|trader]   # 启动服务 (默认 all)"
-        echo -e "  $0 stop [all|lobby|trader]    # 停止服务 (默认 all)"
-        echo -e "  $0 restart [all|lobby|trader] # 重启服务 (默认 all)"
-        echo -e "  $0 logs [lobby|trader]        # 查看实时日志"
+        echo -e "  $0 status                            # 查看全部 6 个 Agent 实时状态"
+        echo -e "  $0 start [all|lobby|trader|kibble]   # 启动服务 (默认 all)"
+        echo -e "  $0 stop [all|lobby|trader|kibble]    # 停止服务 (默认 all)"
+        echo -e "  $0 restart [all|lobby|trader|kibble] # 重启服务 (默认 all)"
+        echo -e "  $0 logs [lobby|trader|kibble]        # 查看实时日志"
         exit 1
         ;;
 esac

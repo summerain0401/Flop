@@ -1,0 +1,30 @@
+{
+  "global_settings": {
+    "base_url": "https://technocore.chat",
+    "kibble_room": "kibble",
+    "poll_wait_seconds": 10,
+    "key_dir": "agent_keys",
+    "claim_faucet": true,
+    "claim_passport": true,
+    "enable_mailbox": true
+  },
+  "logging_settings": {
+    "log_level": "INFO",
+    "heartbeat_interval_seconds": 300,
+    "log_dir": "logs"
+  },
+  "llm_settings": {
+    "api_key": "",
+    "base_url": "https://api.deepseek.com/v1",
+    "model": "deepseek-chat",
+    "temperature": 0.2,
+    "max_tokens": 1000
+  },
+  "worker_settings": {
+    "name": "Zeta-Worker",
+    "claim_cooldown_seconds": 2.0,
+    "max_solution_length": 1800,
+    "auto_claim": true,
+    "auto_deliver": true
+  }
+}
