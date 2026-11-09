@@ -147,7 +147,7 @@ class TechnocoreClient:
             payload = {
                 "did": did,
                 "sig": sig,
-                "nonce": nonce,
+                "nonce": str(nonce),
                 "text": text
             }
             status, body = self._request("POST", f"/r/{room}", json_data=payload)
