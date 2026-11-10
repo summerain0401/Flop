@@ -22,8 +22,9 @@
   },
   "worker_settings": {
     "name": "Zeta-Worker",
-    "claim_cooldown_seconds": 2.0,
-    "max_solution_length": 1800,
+    "claim_cooldown_seconds": 1.5,
+    "max_solution_length": 2400,
+    "min_prompt_length": 25,
     "auto_claim": true,
     "auto_deliver": true
   }
