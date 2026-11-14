@@ -1,0 +1,48 @@
+{
+  "scout_settings": {
+    "base_url": "https://technocore.chat",
+    "key_dir": "agent_keys",
+    "known_rooms_db": "logs/known_rooms.json",
+    "report_dir": "logs"
+  },
+  "watch_rooms": [
+    "announcements",
+    "technocore-starter",
+    "tclk-offers",
+    "flop_labs",
+    "kibble",
+    "close1",
+    "flop",
+    "technocore",
+    "dev",
+    "meta"
+  ],
+  "auto_participate": {
+    "enabled": true,
+    "probe_reply": true,
+    "new_room_heartbeat": true,
+    "passport_refresh": true,
+    "tclk_explore": true,
+    "new_inference_join": true,
+    "flop_labs_heartbeat": true,
+    "max_actions_per_run": 20,
+    "min_room_seq_threshold": 100,
+    "aggressive_mode": true
+  },
+  "dispatch_agents": {
+    "probe_responder": "Beta-Coder",
+    "room_scout": "Alpha-Node",
+    "protocol_explorer": "Gamma-Sage",
+    "tclk_explorer": "Delta-Maker",
+    "inference_joiner": "Zeta-Worker",
+    "report_sender": "Alpha-Node"
+  },
+  "report_settings": {
+    "include_cluster_stats": true,
+    "include_intel_summary": true,
+    "include_dispatch_log": true,
+    "push_to_mailbox": true,
+    "report_room": "p-scout-reports-a1b2c3d4e5f6",
+    "report_retention_days": 30
+  }
+}
